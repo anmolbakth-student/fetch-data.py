@@ -1,494 +1,2797 @@
-import subprocess
-import time
-import os
-from datetime import datetime, timedelta
-from zk import ZK
-import sqlite3
-import sys
-from collections import defaultdict
+folder name templates
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activation</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary: #1a237e;
+        }
 
-# ================= CONFIGURATION =================
-WIFI_CONFIG = {
-    '2nd_floor': {
-        'ssid': '35170741',
-        'password': 'usman1234',
-        'device_ip': '192.168.100.250',
-        'device_port': 4370,
-        'device_password': 0
-    },
-    '3rd_floor': {
-        'ssid': '35170742',
-        'password': '1122',
-        'device_ip': '192.168.68.75',
-        'device_port': 4370,
-        'device_password': 1122
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f0f0f0;
+            padding: 20px;
+        }
+
+        .activation-container {
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .activation-card {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 40px 32px 32px 32px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+
+        .logo-icon {
+            font-size: 3rem;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .company-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 20px;
+        }
+
+        .activation-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #dc3545;
+            margin-bottom: 8px;
+        }
+
+        .activation-sub {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+            text-align: left;
+        }
+
+        .form-group label {
+            font-weight: 500;
+            font-size: 0.85rem;
+            color: #37474f;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .form-group .form-control {
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-group .form-control:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 0.2rem rgba(26, 35, 126, 0.1);
+        }
+
+        .btn-activate {
+            width: 100%;
+            padding: 12px;
+            background: #1a237e;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .btn-activate:hover {
+            background: #0d1442;
+            transform: translateY(-1px);
+        }
+
+        .alert-error {
+            background: #fef3f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .footer-text {
+            margin-top: 20px;
+            font-size: 0.7rem;
+            color: #9ca3af;
+        }
+
+        .footer-text .footer-logo {
+            font-size: 0.9rem;
+        }
+
+        .footer-text .footer-company {
+            font-weight: 600;
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="activation-container">
+        <div class="activation-card">
+            <!-- Logo -->
+            <span class="logo-icon">🅐∞🅐</span>
+            <div class="company-name">USMAN ENTERPRISE</div>
+
+            <!-- Title -->
+            <div class="activation-title">
+                <i class="bi bi-lock-fill"></i> License Activation
+            </div>
+            <div class="activation-sub">
+                Enter the activation key to continue
+            </div>
+
+            <!-- Error Message -->
+            {% if error %}
+            <div class="alert-error">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert" style="font-size: 0.85rem; padding: 10px 14px;">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" style="font-size: 0.7rem;"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Activation Form -->
+            <form method="POST" action="{{ url_for('activate') }}">
+                <div class="form-group">
+                    <label for="key"><i class="bi bi-key-fill"></i> Activation Key</label>
+                    <input type="password" 
+                           class="form-control" 
+                           id="key" 
+                           name="key" 
+                           placeholder="Enter activation key"
+                           required
+                           autofocus>
+                </div>
+
+                <button type="submit" class="btn-activate">
+                    <i class="bi bi-check-circle"></i> Activate
+                </button>
+            </form>
+
+            <!-- Footer -->
+            <div class="footer-text">
+                <span class="footer-logo">🅐∞🅐</span>
+                <span class="footer-company">USMAN ENTERPRISE</span>
+                &nbsp;|&nbsp; All Rights Reserved ® 2026
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+{% extends "layout.html" %}
+
+{% block title %}Employee Activity Report{% endblock %}
+
+{% block content %}
+<div class="card-modern">
+    <div class="card-header-modern">
+        <i class="bi bi-clock-history"></i> Employee Activity Report
+        <span class="badge bg-secondary float-end">Detailed punch audit</span>
+    </div>
+    <div class="card-body-modern">
+
+        <div class="alert alert-info alert-modern mb-4">
+            <i class="bi bi-info-circle"></i>
+            <strong>Shows every individual punch</strong> - No grouping, no remarks, just raw punch data.
+            Each IN and OUT punch appears as a separate row.
+        </div>
+
+        <form method="GET" action="{{ url_for('activity') }}" class="filter-row">
+            <div class="filter-item">
+                <label class="form-label fw-semibold"><i class="bi bi-person"></i> Employee</label>
+                <select name="employee" class="form-select form-select-modern" required>
+                    <option value="">-- Select Employee --</option>
+                    {% for emp in employees %}
+                        <option value="{{ emp.user_id }}|{{ emp.device_floor }}"
+                                {% if selected_employee == emp.user_id|string + '|' + emp.device_floor %}selected{% endif %}>
+                            {{ emp.user_id }} - {{ emp.name }} ({{ emp.device_floor }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-item">
+                <label class="form-label fw-semibold"><i class="bi bi-calendar"></i> From</label>
+                <input type="date" name="date_from" class="form-control form-control-modern"
+                       value="{{ date_from_activity or '' }}" required>
+            </div>
+            <div class="filter-item">
+                <label class="form-label fw-semibold"><i class="bi bi-calendar"></i> To</label>
+                <input type="date" name="date_to" class="form-control form-control-modern"
+                       value="{{ date_to_activity or '' }}" required>
+            </div>
+            <div class="filter-item-btn">
+                <button type="submit" class="btn btn-primary-custom">
+                    <i class="bi bi-search"></i> View
+                </button>
+            </div>
+            <div class="filter-item-btn">
+                <a href="{{ url_for('activity') }}" class="btn btn-secondary-custom">
+                    <i class="bi bi-arrow-counterclockwise"></i> Reset
+                </a>
+            </div>
+        </form>
+
+        {% if activity_logs %}
+        <div class="table-responsive">
+            <table class="table table-custom">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Floor</th>
+                        <th>Date</th>
+                        <th>Day</th>
+                        <th>Name</th>
+                        <th>Chk In</th>
+                        <th>Chk Out</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in activity_logs %}
+                    <tr>
+                        <td><strong>{{ log.user_id }}</strong></td>
+                        <td>
+                            {% if log.device_floor == '2nd_floor' %}
+                                <span class="badge-floor-2nd">2nd</span>
+                            {% else %}
+                                <span class="badge-floor-3rd">3rd</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ log.date }}</td>
+                        <td>{{ log.day }}</td>
+                        <td>{{ log.user_name }}</td>
+                        <td>
+                            {% if log.punch_type == 0 %}
+                                <span class="badge-in">{{ log.time }}</span>
+                            {% else %}
+                                <span class="text-muted">--</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if log.punch_type == 1 %}
+                                <span class="badge-out">{{ log.time }}</span>
+                            {% else %}
+                                <span class="text-muted">--</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-3 d-flex justify-content-between align-items-center">
+            <div>
+                <a href="{{ url_for('export_activity', employee=selected_employee, date_from=date_from_activity, date_to=date_to_activity) }}"
+                   class="btn btn-excel">
+                    <i class="bi bi-file-earmark-excel"></i> Download Excel
+                </a>
+                <span class="text-muted ms-3" style="font-size: 0.85rem;">
+                    <i class="bi bi-list-ul"></i> {{ activity_logs|length }} punches found
+                </span>
+            </div>
+        </div>
+
+        {% else %}
+            {% if selected_employee %}
+            <div class="alert alert-info alert-modern">
+                <i class="bi bi-info-circle"></i> No punches found for the selected employee and date range.
+            </div>
+            {% else %}
+            <div class="alert alert-info alert-modern">
+                <i class="bi bi-info-circle"></i> Select an employee and date range to view activity.
+            </div>
+            {% endif %}
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}
+{% extends "layout.html" %}
+
+{% block title %}Edit Attendance Record{% endblock %}
+
+{% block content %}
+<div class="table-container">
+    <h2><i class="bi bi-pencil-square"></i> Edit Attendance Record</h2>
+
+    {% if log.is_manually_edited == 1 %}
+    <div class="alert alert-warning">
+        <i class="bi bi-lock-fill"></i> <strong>This record is manually edited and cannot be modified.</strong>
+    </div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('edit_log', log_id=log.id) }}">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">User ID</label>
+                <input type="text" class="form-control" value="{{ log.user_id }}" disabled>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">User Name</label>
+                <input type="text" class="form-control" value="{{ log.user_name }}" disabled>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Timestamp</label>
+                <input type="text" class="form-control" value="{{ log.timestamp }}" disabled>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Floor</label>
+                <input type="text" class="form-control" value="{{ log.device_floor }}" disabled>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Punch Type</label>
+                <input type="text" class="form-control" value="{% if log.punch_type == 0 %}IN{% else %}OUT{% endif %}" disabled>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">
+                    <i class="bi bi-tag"></i> Status
+                </label>
+                <input type="text" class="form-control" value="{{ log.remark_in or log.remark_out or '-' }}" disabled>
+            </div>
+
+            <!-- Editable Fields -->
+            <div class="col-md-12">
+                <hr>
+                <h5 class="text-primary"><i class="bi bi-pencil"></i> Editable Fields</h5>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Remark IN</label>
+                <input type="text" name="remark_in" class="form-control" 
+                       value="{{ log.remark_in or '' }}"
+                       {% if log.is_manually_edited == 1 %}disabled{% endif %}>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Remark OUT</label>
+                <input type="text" name="remark_out" class="form-control" 
+                       value="{{ log.remark_out or '' }}"
+                       {% if log.is_manually_edited == 1 %}disabled{% endif %}>
+            </div>
+
+            <div class="col-md-12">
+                <label class="form-label">Status Override</label>
+                <input type="text" name="status_override" class="form-control" 
+                       value="{{ log.status_override or '' }}"
+                       {% if log.is_manually_edited == 1 %}disabled{% endif %}>
+                <small class="text-muted">Optional: Override auto-calculated status</small>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            {% if log.is_manually_edited == 0 %}
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-check-lg"></i> Save Changes
+                </button>
+                <button type="reset" class="btn btn-secondary">
+                    <i class="bi bi-arrow-counterclockwise"></i> Reset
+                </button>
+            {% else %}
+                <div class="alert alert-secondary">
+                    <i class="bi bi-lock-fill"></i> This record is locked (manually edited)
+                </div>
+            {% endif %}
+            <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
+                <i class="bi bi-arrow-left"></i> Back to Attendance
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+{% extends "edit_layout.html" %}
+
+{% block title %}Bulk Edit{% endblock %}
+
+{% block content %}
+<div class="card-dull">
+    <div class="card-header-dull">
+        <i class="bi bi-layers"></i> Bulk Edit Records
+        <span class="badge bg-secondary float-end">Update multiple records</span>
+    </div>
+    <div class="card-body-dull">
+
+        <div class="alert alert-dull">
+            <i class="bi bi-info-circle"></i> 
+            <strong>How to use:</strong> Select records from the <a href="{{ url_for('edit_list') }}" style="color: #6c757d;">Edit List</a> page, then click "Bulk Edit Selected" to update them all at once.
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card-dull">
+                    <div class="card-header-dull">
+                        <i class="bi bi-check-square"></i> Step 1: Select Records
+                    </div>
+                    <div class="card-body-dull">
+                        <p style="font-size: 0.85rem; color: #6c757d;">
+                            Go to the <a href="{{ url_for('edit_list') }}" style="color: #6c757d;">Edit List</a> page.
+                        </p>
+                        <ul style="font-size: 0.85rem; color: #6c757d; padding-left: 20px;">
+                            <li>Use filters to find records</li>
+                            <li>Check the checkbox for each record</li>
+                            <li>Click "Bulk Edit Selected" button</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card-dull">
+                    <div class="card-header-dull">
+                        <i class="bi bi-pencil"></i> Step 2: Update Fields
+                    </div>
+                    <div class="card-body-dull">
+                        <p style="font-size: 0.85rem; color: #6c757d;">
+                            In the bulk edit modal, you can update:
+                        </p>
+                        <ul style="font-size: 0.85rem; color: #6c757d; padding-left: 20px;">
+                            <li><strong>Remark IN</strong> - In-time remark</li>
+                            <li><strong>Remark OUT</strong> - Out-time remark</li>
+                            <li><strong>Status Override</strong> - Custom status</li>
+                        </ul>
+                        <p style="font-size: 0.85rem; color: #6c757d; margin-top: 8px;">
+                            <i class="bi bi-exclamation-triangle"></i> <strong>Note:</strong> Only auto-records (not manually edited) can be updated.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <a href="{{ url_for('edit_list') }}" class="btn btn-dull-primary">
+                <i class="bi bi-arrow-left"></i> Go to Edit List
+            </a>
+        </div>
+
+        <hr style="border-color: #dee2e6; margin: 20px 0;">
+
+        <div class="card-dull">
+            <div class="card-header-dull">
+                <i class="bi bi-clock-history"></i> Recently Updated Records
+            </div>
+            <div class="card-body-dull">
+                {% if recent_edits %}
+                <div class="table-responsive">
+                    <table class="table table-dull">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Timestamp</th>
+                                <th>Floor</th>
+                                <th>Remark</th>
+                                <th>Edited At</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for edit in recent_edits %}
+                            <tr>
+                                <td>{{ edit.user_name or edit.user_id }}</td>
+                                <td>{{ edit.timestamp }}</td>
+                                <td>
+                                    <span class="badge-dull-floor">
+                                        {% if edit.device_floor == '2nd_floor' %}2nd{% else %}3rd{% endif %}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if edit.remark_in %}
+                                        IN: {{ edit.remark_in }}
+                                    {% endif %}
+                                    {% if edit.remark_out %}
+                                        OUT: {{ edit.remark_out }}
+                                    {% endif %}
+                                </td>
+                                <td>{{ edit.last_edited_at or '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted" style="font-size: 0.85rem;">No recently edited records found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}USMAN ENTERPRISE - Edit System{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <style>
+        /* DULL COLOR SCHEME - Boring and Unattractive */
+        :root {
+            --dull-primary: #6c757d;
+            --dull-secondary: #868e96;
+            --dull-bg: #f0f0f0;
+            --dull-card: #f8f9fa;
+            --dull-text: #495057;
+            --dull-border: #dee2e6;
+            --dull-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--dull-bg);
+            color: var(--dull-text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Navbar - Dull Gray */
+        .navbar-dull {
+            background: #6c757d !important;
+            padding: 10px 0;
+            box-shadow: none;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .navbar-dull .navbar-brand {
+            color: #f8f9fa !important;
+            font-weight: 600;
+            font-size: 1.1rem;
+            opacity: 0.8;
+        }
+
+        .navbar-dull .navbar-brand .logo-icon {
+            font-size: 1.4rem;
+            margin-right: 6px;
+            opacity: 0.6;
+        }
+
+        .navbar-dull .nav-link {
+            color: rgba(255, 255, 255, 0.7) !important;
+            font-weight: 400;
+            padding: 6px 14px;
+            border-radius: 4px;
+            transition: none;
+        }
+
+        .navbar-dull .nav-link:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.9) !important;
+        }
+
+        .navbar-dull .nav-link.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff !important;
+        }
+
+        .navbar-dull .nav-link i {
+            margin-right: 4px;
+        }
+
+        .navbar-dull .btn-logout-dull {
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.8) !important;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+            padding: 6px 16px;
+            font-size: 0.85rem;
+            transition: none;
+        }
+
+        .navbar-dull .btn-logout-dull:hover {
+            background: #5a6268;
+            border-color: #5a6268;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 20px 0 16px 0;
+        }
+
+        /* Cards - Flat, No Shadows */
+        .card-dull {
+            background: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            box-shadow: none;
+        }
+
+        .card-header-dull {
+            background: #e9ecef;
+            border-bottom: 1px solid #dee2e6;
+            padding: 12px 16px;
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.95rem;
+        }
+
+        .card-body-dull {
+            padding: 16px;
+        }
+
+        /* Buttons - Dull Gray */
+        .btn-dull-primary {
+            background: #6c757d;
+            border: 1px solid #6c757d;
+            color: #ffffff;
+            padding: 8px 20px;
+            border-radius: 4px;
+            font-weight: 400;
+            font-size: 0.85rem;
+            transition: none;
+        }
+
+        .btn-dull-primary:hover {
+            background: #5a6268;
+            border-color: #5a6268;
+            color: #ffffff;
+        }
+
+        .btn-dull-secondary {
+            background: #868e96;
+            border: 1px solid #868e96;
+            color: #ffffff;
+            padding: 8px 20px;
+            border-radius: 4px;
+            font-weight: 400;
+            font-size: 0.85rem;
+            transition: none;
+        }
+
+        .btn-dull-secondary:hover {
+            background: #727b84;
+            border-color: #727b84;
+            color: #ffffff;
+        }
+
+        .btn-dull-success {
+            background: #6c757d;
+            border: 1px solid #6c757d;
+            color: #ffffff;
+            padding: 8px 20px;
+            border-radius: 4px;
+            font-weight: 400;
+            font-size: 0.85rem;
+            transition: none;
+        }
+
+        .btn-dull-success:hover {
+            background: #5a6268;
+            border-color: #5a6268;
+            color: #ffffff;
+        }
+
+        .btn-dull-danger {
+            background: #6c757d;
+            border: 1px solid #6c757d;
+            color: #ffffff;
+            padding: 8px 20px;
+            border-radius: 4px;
+            font-weight: 400;
+            font-size: 0.85rem;
+            transition: none;
+        }
+
+        .btn-dull-danger:hover {
+            background: #5a6268;
+            border-color: #5a6268;
+            color: #ffffff;
+        }
+
+        /* Tables - Boring */
+        .table-dull {
+            border: 1px solid #dee2e6;
+        }
+
+        .table-dull thead {
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        .table-dull thead th {
+            padding: 10px 12px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            border: 1px solid #dee2e6;
+        }
+
+        .table-dull tbody td {
+            padding: 8px 12px;
+            border: 1px solid #dee2e6;
+            vertical-align: middle;
+            font-size: 0.85rem;
+        }
+
+        .table-dull tbody tr:hover {
+            background: #f5f5f5;
+        }
+
+        /* Badges - Dull */
+        .badge-dull-floor {
+            background: #6c757d;
+            color: #ffffff;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-weight: 400;
+            font-size: 0.7rem;
+        }
+
+        .badge-dull-type {
+            background: #868e96;
+            color: #ffffff;
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-weight: 400;
+            font-size: 0.65rem;
+        }
+
+        .badge-dull-status {
+            background: #dee2e6;
+            color: #495057;
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-weight: 400;
+            font-size: 0.65rem;
+        }
+
+        /* Footer - Dull */
+        .footer-dull {
+            background: #e9ecef;
+            border-top: 1px solid #dee2e6;
+            padding: 12px 0;
+            text-align: center;
+            color: #6c757d;
+            font-size: 0.75rem;
+            margin-top: auto;
+        }
+
+        .footer-dull .footer-logo {
+            font-size: 1rem;
+            opacity: 0.5;
+        }
+
+        .footer-dull .footer-company {
+            font-weight: 600;
+            color: #6c757d;
+        }
+
+        /* Form Controls - Boring */
+        .form-control-dull {
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            background: #ffffff;
+            transition: none;
+        }
+
+        .form-control-dull:focus {
+            border-color: #6c757d;
+            box-shadow: none;
+        }
+
+        .form-select-dull {
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            background: #ffffff;
+            transition: none;
+        }
+
+        .form-select-dull:focus {
+            border-color: #6c757d;
+            box-shadow: none;
+        }
+
+        /* Alerts - Dull */
+        .alert-dull {
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            background: #f8f9fa;
+            color: #495057;
+        }
+
+        /* Pagination - Dull */
+        .pagination-dull .page-link {
+            color: #6c757d;
+            border: 1px solid #dee2e6;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+        }
+
+        .pagination-dull .page-item.active .page-link {
+            background: #6c757d;
+            border-color: #6c757d;
+            color: #ffffff;
+        }
+
+        .pagination-dull .page-link:hover {
+            background: #e9ecef;
+        }
+
+        @media (max-width: 768px) {
+            .navbar-dull .navbar-brand {
+                font-size: 0.9rem;
+            }
+            .table-dull {
+                font-size: 0.75rem;
+            }
+            .card-body-dull {
+                padding: 12px;
+            }
+        }
+
+        /* Edit Badge - Dull Lock */
+        .badge-dull-locked {
+            background: #dee2e6;
+            color: #6c757d;
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-weight: 400;
+            font-size: 0.65rem;
+        }
+
+        .badge-dull-unlocked {
+            background: #e9ecef;
+            color: #868e96;
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-weight: 400;
+            font-size: 0.65rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar - Dull -->
+    <nav class="navbar navbar-expand-lg navbar-dull">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <span class="logo-icon">🅐∞🅐</span>
+                USMAN ENTERPRISE
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'edit_list' %}active{% endif %}" href="/edit">
+                            <i class="bi bi-pencil"></i> Edit List
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'edit_bulk' %}active{% endif %}" href="/edit/bulk">
+                            <i class="bi bi-layers"></i> Bulk Edit
+                        </a>
+                    </li>
+                    <li class="nav-item ms-2">
+                        <a class="btn btn-logout-dull" href="/logout">
+                            <i class="bi bi-box-arrow-right"></i> Logout
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="container">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-dull alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <!-- Footer - Dull -->
+    <div class="footer-dull">
+        <div class="container">
+            <span class="footer-logo">🅐∞🅐</span>
+            <span class="footer-company">USMAN ENTERPRISE</span>
+            &nbsp;|&nbsp; All Rights Reserved ® 2026
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
+{% extends "edit_layout.html" %}
+
+{% block title %}Edit Records{% endblock %}
+
+{% block content %}
+<div class="card-dull">
+    <div class="card-header-dull">
+        <i class="bi bi-pencil"></i> Edit Attendance Records
+        <span class="badge bg-secondary float-end">{{ total_count }} records</span>
+    </div>
+    <div class="card-body-dull">
+
+        <!-- Filters -->
+        <form method="GET" action="/edit" class="row g-2 mb-3">
+            <div class="col-md-3">
+                <label class="form-label" style="font-size: 0.8rem; font-weight: 600; color: #6c757d;">Search</label>
+                <input type="text" name="search" class="form-control form-control-dull" placeholder="ID or Name" value="{{ search }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" style="font-size: 0.8rem; font-weight: 600; color: #6c757d;">Floor</label>
+                <select name="floor" class="form-select form-select-dull">
+                    <option value="">All</option>
+                    <option value="2nd_floor" {% if floor == '2nd_floor' %}selected{% endif %}>2nd Floor</option>
+                    <option value="3rd_floor" {% if floor == '3rd_floor' %}selected{% endif %}>3rd Floor</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" style="font-size: 0.8rem; font-weight: 600; color: #6c757d;">&nbsp;</label>
+                <div class="form-check">
+                    <input type="checkbox" name="auto_only" value="true" class="form-check-input" id="auto_only" {% if show_only_auto %}checked{% endif %}>
+                    <label class="form-check-label" for="auto_only" style="font-size: 0.85rem; color: #6c757d;">
+                        Show only auto-records (editable)
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" style="font-size: 0.8rem; font-weight: 600; color: #6c757d;">&nbsp;</label>
+                <button type="submit" class="btn btn-dull-primary w-100">
+                    <i class="bi bi-search"></i> Filter
+                </button>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" style="font-size: 0.8rem; font-weight: 600; color: #6c757d;">&nbsp;</label>
+                <a href="/edit" class="btn btn-dull-secondary w-100">
+                    <i class="bi bi-arrow-counterclockwise"></i> Reset
+                </a>
+            </div>
+        </form>
+
+        <!-- Results Table -->
+        {% if logs %}
+        <div class="table-responsive">
+            <table class="table table-dull">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">
+                            <input type="checkbox" id="select-all" class="form-check-input">
+                        </th>
+                        <th>ID</th>
+                        <th>User</th>
+                        <th>Date/Time</th>
+                        <th>Floor</th>
+                        <th>Type</th>
+                        <th>Remark</th>
+                        <th>Status</th>
+                        <th style="width: 100px;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td>
+                            <input type="checkbox" name="record_ids" value="{{ log.id }}" class="form-check-input record-checkbox">
+                        </td>
+                        <td><strong>{{ log.user_id }}</strong></td>
+                        <td>{{ log.user_name or 'Unknown' }}</td>
+                        <td>{{ log.timestamp }}</td>
+                        <td>
+                            <span class="badge-dull-floor">
+                                {% if log.device_floor == '2nd_floor' %}2nd{% else %}3rd{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge-dull-type">
+                                {% if log.punch_type == 0 %}IN{% else %}OUT{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            {% if log.is_manually_edited == 1 %}
+                                <span class="badge-dull-locked"><i class="bi bi-lock"></i> Edited</span>
+                            {% endif %}
+                            {{ log.remark_in or log.remark_out or '-' }}
+                        </td>
+                        <td>
+                            {% set status = log.remark_in or log.remark_out or '' %}
+                            {% if 'ON TIME' in status %}
+                                <span class="badge-dull-status">On Time</span>
+                            {% elif 'LATE' in status %}
+                                <span class="badge-dull-status">Late</span>
+                            {% elif 'GRACE' in status %}
+                                <span class="badge-dull-status">Grace</span>
+                            {% elif 'OVERTIME' in status %}
+                                <span class="badge-dull-status">Overtime</span>
+                            {% elif 'EARLY' in status %}
+                                <span class="badge-dull-status">Early Dept</span>
+                            {% else %}
+                                <span class="badge-dull-status">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if log.is_manually_edited == 0 %}
+                                <a href="{{ url_for('edit_single', log_id=log.id) }}" class="btn btn-dull-secondary btn-sm">
+                                    <i class="bi bi-pencil"></i> Edit
+                                </a>
+                            {% else %}
+                                <span class="badge-dull-locked"><i class="bi bi-lock"></i> Locked</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Bulk Edit Button -->
+        <div class="mt-2">
+            <button type="button" class="btn btn-dull-primary btn-sm" data-bs-toggle="modal" data-bs-target="#bulkEditModal">
+                <i class="bi bi-layers"></i> Bulk Edit Selected
+            </button>
+            <span class="text-muted" style="font-size: 0.8rem; margin-left: 10px;">
+                <span id="selected-count">0</span> selected
+            </span>
+        </div>
+
+        <!-- Pagination -->
+        {% if total_pages > 1 %}
+        <nav class="mt-3">
+            <ul class="pagination pagination-dull justify-content-center">
+                {% if page > 1 %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page-1 }}&search={{ search }}&floor={{ floor }}&auto_only={{ show_only_auto }}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+
+                {% for p in range(1, total_pages + 1) %}
+                    {% if p == page %}
+                        <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+                    {% elif p <= 3 or p > total_pages - 3 or (p >= page - 2 and p <= page + 2) %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ p }}&search={{ search }}&floor={{ floor }}&auto_only={{ show_only_auto }}">{{ p }}</a>
+                        </li>
+                    {% elif p == 4 and page > 5 %}
+                        <li class="page-item disabled"><span class="page-link">…</span></li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page < total_pages %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page+1 }}&search={{ search }}&floor={{ floor }}&auto_only={{ show_only_auto }}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+        <div class="mt-2 text-muted" style="font-size: 0.8rem;">
+            Showing {{ logs|length }} records ({{ total_count }} total)
+        </div>
+
+        {% else %}
+        <div class="alert alert-dull">
+            <i class="bi bi-info-circle"></i> No records found matching your filters.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Bulk Edit Modal -->
+<div class="modal fade" id="bulkEditModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius: 4px; border: 1px solid #dee2e6;">
+            <div class="modal-header" style="background: #e9ecef; border-bottom: 1px solid #dee2e6;">
+                <h5 class="modal-title" style="color: #495057; font-weight: 600; font-size: 0.95rem;">
+                    <i class="bi bi-layers"></i> Bulk Edit
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('edit_bulk') }}">
+                <div class="modal-body">
+                    <p style="font-size: 0.85rem; color: #6c757d;">
+                        Update <span id="modal-selected-count">0</span> selected record(s)
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label" style="font-size: 0.85rem; font-weight: 600; color: #495057;">Field to Update</label>
+                        <select name="field" class="form-select form-select-dull">
+                            <option value="remark_in">Remark IN</option>
+                            <option value="remark_out">Remark OUT</option>
+                            <option value="status_override">Status Override</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" style="font-size: 0.85rem; font-weight: 600; color: #495057;">New Value</label>
+                        <input type="text" name="value" class="form-control form-control-dull" placeholder="Enter new value">
+                    </div>
+                    <div id="selected-ids-container"></div>
+                </div>
+                <div class="modal-footer" style="background: #f8f9fa; border-top: 1px solid #dee2e6;">
+                    <button type="button" class="btn btn-dull-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-dull-primary">Update All</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+    // Select all checkbox
+    document.getElementById('select-all').addEventListener('change', function() {
+        document.querySelectorAll('.record-checkbox').forEach(cb => cb.checked = this.checked);
+        updateSelectedCount();
+    });
+
+    // Individual checkboxes
+    document.querySelectorAll('.record-checkbox').forEach(cb => {
+        cb.addEventListener('change', updateSelectedCount);
+    });
+
+    function updateSelectedCount() {
+        const selected = document.querySelectorAll('.record-checkbox:checked').length;
+        document.getElementById('selected-count').textContent = selected;
+        document.getElementById('modal-selected-count').textContent = selected;
+        
+        // Update hidden inputs for bulk edit
+        const container = document.getElementById('selected-ids-container');
+        container.innerHTML = '';
+        document.querySelectorAll('.record-checkbox:checked').forEach(cb => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'record_ids';
+            input.value = cb.value;
+            container.appendChild(input);
+        });
     }
-}
+</script>
+{% endblock %}
+{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>USMAN ENTERPRISE - Edit Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --dull-primary: #6c757d;
+            --dull-bg: #f0f0f0;
+        }
 
-# Fetch ALL records from June 1, 2026 onward
-FETCH_START_DATE = datetime(2026, 6, 1)
-# =================================================
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-def print_status(message, status="info"):
-    if status == "success":
-        print(f"[OK] {message}")
-    elif status == "error":
-        print(f"[ERROR] {message}")
-    elif status == "warning":
-        print(f"[WARN] {message}")
-    elif status == "info":
-        print(f"[INFO] {message}")
-    else:
-        print(message)
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f0f0f0;
+            padding: 20px;
+        }
 
-def get_current_wifi():
-    try:
-        result = subprocess.run(['netsh', 'wlan', 'show', 'interfaces'], 
-                                capture_output=True, text=True, encoding='utf-8')
-        for line in result.stdout.split('\n'):
-            if 'SSID' in line and 'BSSID' not in line:
-                ssid = line.split(':')[1].strip()
-                if ssid and ssid != '':
-                    print_status(f"Current WiFi: {ssid}", "info")
-                    return ssid
-        return None
-    except Exception as e:
-        print_status(f"Error getting current WiFi: {e}", "error")
-        return None
+        .login-container {
+            width: 100%;
+            max-width: 400px;
+        }
 
-def switch_wifi(ssid, password=None):
-    try:
-        current = get_current_wifi()
-        if current == ssid:
-            print_status(f"Already connected to {ssid}", "success")
-            return True
+        .login-card {
+            background: #ffffff;
+            border-radius: 4px;
+            padding: 40px 32px 32px 32px;
+            box-shadow: none;
+            border: 1px solid #dee2e6;
+            text-align: center;
+        }
 
-        print_status(f"Switching from '{current}' to '{ssid}'...", "info")
-        
-        subprocess.run(['netsh', 'wlan', 'disconnect'], capture_output=True)
-        time.sleep(2)
-        
-        if password:
-            os.makedirs("C:\\temp", exist_ok=True)
+        .logo-icon {
+            font-size: 3rem;
+            display: block;
+            margin-bottom: 4px;
+            opacity: 0.6;
+        }
+
+        .company-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #6c757d;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .company-sub {
+            font-size: 0.8rem;
+            color: #868e96;
+            margin-bottom: 20px;
+        }
+
+        .login-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+            text-align: left;
+        }
+
+        .form-group label {
+            font-weight: 500;
+            font-size: 0.85rem;
+            color: #495057;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .form-group .input-group {
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid #ced4da;
+            background: #ffffff;
+        }
+
+        .form-group .input-group:focus-within {
+            border-color: #6c757d;
+        }
+
+        .form-group .input-group-text {
+            background: #f8f9fa;
+            border: none;
+            color: #6c757d;
+            padding: 0 0 0 12px;
+            font-size: 0.9rem;
+            border-radius: 0;
+        }
+
+        .form-group .form-control {
+            border: none;
+            padding: 10px 12px 10px 8px;
+            font-size: 0.9rem;
+            background: transparent;
+            outline: none;
+            box-shadow: none;
+            border-radius: 0;
+        }
+
+        .form-group .form-control:focus {
+            box-shadow: none;
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 12px;
+            background: #6c757d;
+            color: #ffffff;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: none;
+            cursor: pointer;
+        }
+
+        .btn-login:hover {
+            background: #5a6268;
+        }
+
+        .btn-login i {
+            margin-right: 6px;
+        }
+
+        .alert-error {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            color: #495057;
+            padding: 10px 14px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .alert-error i {
+            color: #6c757d;
+        }
+
+        .footer-text {
+            margin-top: 20px;
+            font-size: 0.7rem;
+            color: #adb5bd;
+        }
+
+        .footer-text .footer-logo {
+            font-size: 0.9rem;
+        }
+
+        .footer-text .footer-company {
+            font-weight: 600;
+            color: #6c757d;
+        }
+
+        @media (max-width: 480px) {
+            .login-card {
+                padding: 28px 16px 24px 16px;
+            }
+            .logo-icon {
+                font-size: 2.4rem;
+            }
+            .company-name {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <!-- Logo -->
+            <span class="logo-icon">🅐∞🅐</span>
+            <div class="company-name">USMAN ENTERPRISE</div>
+            <div class="company-sub">Edit Management System</div>
+
+            <!-- Title -->
+            <div class="login-title">
+                <i class="bi bi-lock-fill" style="color: #6c757d;"></i> Access Required
+            </div>
+
+            <!-- Error Message -->
+            {% if error %}
+            <div class="alert-error">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <!-- Login Form -->
+            <form method="POST" action="{{ url_for('login') }}">
+                <div class="form-group">
+                    <label for="access_code">
+                        <i class="bi bi-key-fill" style="color: #6c757d;"></i> Access Code
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="bi bi-shield-lock"></i>
+                        </span>
+                        <input type="password" 
+                               class="form-control" 
+                               id="access_code" 
+                               name="access_code" 
+                               placeholder="Enter access code"
+                               required
+                               autofocus>
+                    </div>
+                    <small class="text-muted" style="font-size: 0.7rem; margin-top: 4px; display: block;">
+                        <i class="bi bi-info-circle"></i> Contact administrator for access
+                    </small>
+                </div>
+
+                <button type="submit" class="btn-login">
+                    <i class="bi bi-box-arrow-in-right"></i> Login
+                </button>
+            </form>
+
+            <!-- Footer -->
+            <div class="footer-text">
+                <span class="footer-logo">🅐∞🅐</span>
+                <span class="footer-company">USMAN ENTERPRISE</span>
+                &nbsp;|&nbsp; All Rights Reserved ® 2026
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+{% extends "edit_layout.html" %}
+
+{% block title %}Edit Record{% endblock %}
+
+{% block content %}
+<div class="card-dull">
+    <div class="card-header-dull">
+        <i class="bi bi-pencil-square"></i> Edit Attendance Record
+        {% if is_locked %}
+            <span class="badge bg-secondary float-end"><i class="bi bi-lock"></i> Locked</span>
+        {% else %}
+            <span class="badge bg-secondary float-end"><i class="bi bi-unlock"></i> Editable</span>
+        {% endif %}
+    </div>
+    <div class="card-body-dull">
+
+        {% if is_locked %}
+        <div class="alert alert-dull">
+            <i class="bi bi-lock"></i> <strong>This record is manually edited and cannot be modified.</strong>
+        </div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('edit_single', log_id=log.id) }}">
+            <div class="row g-2">
+                <!-- Read-only fields -->
+                <div class="col-md-3">
+                    <label class="form-label" style="font-size: 0.8rem; font-weight: 600; color: #6c757d;">User ID</label>
+                    <input type="text" class="form-control form-control-dull" value="{{ log.user_id }}" disabled style="background: #e9ecef;">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" style="font-size: 0.8rem; font-weight: 600; color: #6c757d;">User Name</label>
+                    <input type="text" class="form-control form-control-dull" value="{{ log.user_name or 'Unknown' }}" disabled style="background: #e9ecef;">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" style="font-size: 0.8rem; font-weight: 600; color: #6c757d;">Timestamp</label>
+                    <input type="text" class="form-control form-control-dull" value="{{ log.timestamp }}" disabled style="background: #e9ecef;">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" style="font-size: 0.8rem; font-weight: 600; color: #6c757d;">Floor</label>
+                    <input type="text" class="form-control form-control-dull" value="{{ log.device_floor }}" disabled style="background: #e9ecef;">
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label" style="font-size: 0.8rem; font-weight: 600; color: #6c757d;">Punch Type</label>
+                    <input type="text" class="form-control form-control-dull" value="{% if log.punch_type == 0 %}IN{% else %}OUT{% endif %}" disabled style="background: #e9ecef;">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" style="font-size: 0.8rem; font-weight: 600; color: #6c757d;">Current Status</label>
+                    <input type="text" class="form-control form-control-dull" value="{{ log.remark_in or log.remark_out or '-' }}" disabled style="background: #e9ecef;">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" style="font-size: 0.8rem; font-weight: 600; color: #6c757d;">Manual Edit Status</label>
+                    <input type="text" class="form-control form-control-dull" value="{% if log.is_manually_edited == 1 %}Yes (Locked){% else %}No (Editable){% endif %}" disabled style="background: #e9ecef;">
+                </div>
+
+                <!-- Editable Fields -->
+                <div class="col-md-12 mt-3">
+                    <hr style="border-color: #dee2e6;">
+                    <h6 style="color: #6c757d; font-weight: 600;"><i class="bi bi-pencil"></i> Editable Fields</h6>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label" style="font-size: 0.8rem; font-weight: 600; color: #6c757d;">Remark IN</label>
+                    <input type="text" name="remark_in" class="form-control form-control-dull" 
+                           value="{{ log.remark_in or '' }}"
+                           {% if is_locked %}disabled{% endif %}>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label" style="font-size: 0.8rem; font-weight: 600; color: #6c757d;">Remark OUT</label>
+                    <input type="text" name="remark_out" class="form-control form-control-dull" 
+                           value="{{ log.remark_out or '' }}"
+                           {% if is_locked %}disabled{% endif %}>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label" style="font-size: 0.8rem; font-weight: 600; color: #6c757d;">Status Override</label>
+                    <input type="text" name="status_override" class="form-control form-control-dull" 
+                           value="{{ log.status_override or '' }}"
+                           {% if is_locked %}disabled{% endif %}>
+                    <small class="text-muted" style="font-size: 0.7rem;">Optional: Override auto-calculated status</small>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                {% if not is_locked %}
+                    <button type="submit" class="btn btn-dull-success">
+                        <i class="bi bi-check-lg"></i> Save Changes
+                    </button>
+                    <button type="reset" class="btn btn-dull-secondary">
+                        <i class="bi bi-arrow-counterclockwise"></i> Reset
+                    </button>
+                {% else %}
+                    <div class="alert alert-dull">
+                        <i class="bi bi-lock"></i> This record is locked (manually edited)
+                    </div>
+                {% endif %}
+                <a href="{{ url_for('edit_list') }}" class="btn btn-dull-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to List
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+{% extends "layout.html" %}
+
+{% block title %}Attendance Records{% endblock %}
+
+{% block content %}
+<div class="card-modern">
+    <div class="card-header-modern">
+        <i class="bi bi-table"></i> Attendance Records
+        <span class="badge bg-secondary float-end">{{ total_count }} records</span>
+    </div>
+    <div class="card-body-modern">
+
+        <!-- Filters -->
+        <form method="GET" action="/" class="row g-3 mb-4">
+            <div class="col-md-3">
+                <label class="form-label fw-semibold"><i class="bi bi-calendar"></i> Date From</label>
+                <input type="date" name="date_from" class="form-control form-control-modern" value="{{ date_from }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold"><i class="bi bi-calendar"></i> Date To</label>
+                <input type="date" name="date_to" class="form-control form-control-modern" value="{{ date_to }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-semibold"><i class="bi bi-building"></i> Floor</label>
+                <select name="floor" class="form-select form-select-modern">
+                    <option value="">All Floors</option>
+                    <option value="2nd_floor" {% if selected_floor == '2nd_floor' %}selected{% endif %}>2nd Floor</option>
+                    <option value="3rd_floor" {% if selected_floor == '3rd_floor' %}selected{% endif %}>3rd Floor</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-semibold"><i class="bi bi-person"></i> User</label>
+                <input type="text" name="user_id" class="form-control form-control-modern" placeholder="ID or Name" value="{{ search_user }}">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary-custom w-100">
+                    <i class="bi bi-search"></i> Filter
+                </button>
+            </div>
+        </form>
+
+        <!-- Export Buttons -->
+        <div class="export-group">
+            <a href="{{ url_for('export_excel', date_from=date_from, date_to=date_to, floor=selected_floor, user_id=search_user) }}" 
+               class="btn btn-excel">
+                <i class="bi bi-file-earmark-excel"></i> Excel
+            </a>
+            <a href="{{ url_for('export_csv', date_from=date_from, date_to=date_to, floor=selected_floor, user_id=search_user) }}" 
+               class="btn btn-csv">
+                <i class="bi bi-file-earmark-text"></i> CSV
+            </a>
+            <a href="{{ url_for('export_pdf', date_from=date_from, date_to=date_to, floor=selected_floor, user_id=search_user) }}" 
+               class="btn btn-pdf">
+                <i class="bi bi-file-earmark-pdf"></i> PDF
+            </a>
+            <a href="{{ url_for('export_sheets', date_from=date_from, date_to=date_to, floor=selected_floor, user_id=search_user) }}" 
+               class="btn btn-sheets">
+                <i class="bi bi-layers"></i> Sheets
+            </a>
+        </div>
+
+        <!-- Results Table - 10 Columns -->
+        {% if logs %}
+        <div class="table-responsive">
+            <table class="table table-custom">
+                <thead>
+                    <tr>
+                        <th style="min-width: 60px;">ID</th>
+                        <th style="min-width: 90px;">Floor</th>
+                        <th style="min-width: 100px;">Date</th>
+                        <th style="min-width: 90px;">Day</th>
+                        <th style="min-width: 120px;">Name</th>
+                        <th style="min-width: 90px;">Chk In</th>
+                        <th style="min-width: 120px;">Remarks In</th>
+                        <th style="min-width: 90px;">Chk Out</th>
+                        <th style="min-width: 120px;">Remarks Out</th>
+                        <th style="min-width: 200px;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td><strong>{{ log.user_id }}</strong></td>
+                        <td>
+                            {% if log.device_floor == '2nd_floor' %}
+                                <span class="badge-floor-2nd">2nd Floor</span>
+                            {% else %}
+                                <span class="badge-floor-3rd">3rd Floor</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ log.date }}</td>
+                        <td>
+                            {% if log.day == 'Sunday' %}
+                                <span class="badge bg-danger" style="padding: 4px 12px; border-radius: 20px;">{{ log.day }}</span>
+                            {% else %}
+                                {{ log.day }}
+                            {% endif %}
+                        </td>
+                        <td>{{ log.user_name }}</td>
+                        
+                        <!-- Sunday Merged Row -->
+                        {% if log.is_sunday %}
+                            <td colspan="4" style="text-align: center; background: #f8f9fa; font-weight: bold; color: #dc3545;">
+                                {{ log.chk_in }}
+                            </td>
+                        {% else %}
+                            <td>
+                                {% if log.chk_in != '--' %}
+                                    <span class="badge-in">{{ log.chk_in }}</span>
+                                {% else %}
+                                    <span class="text-muted">--</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if 'Missing' in log.remark_in %}
+                                    <span class="text-danger">{{ log.remark_in }}</span>
+                                {% elif log.remark_in %}
+                                    <span class="text-success">{{ log.remark_in }}</span>
+                                {% else %}
+                                    <span class="text-muted">--</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if log.chk_out != '--' %}
+                                    <span class="badge-out">{{ log.chk_out }}</span>
+                                {% else %}
+                                    <span class="text-muted">--</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if 'Missing' in log.remark_out %}
+                                    <span class="text-danger">{{ log.remark_out }}</span>
+                                {% elif log.remark_out %}
+                                    <span class="text-success">{{ log.remark_out }}</span>
+                                {% else %}
+                                    <span class="text-muted">--</span>
+                                {% endif %}
+                            </td>
+                        {% endif %}
+                        
+                        <td>
+                            {% if log.is_sunday %}
+                                <span class="badge bg-secondary" style="padding: 4px 12px; border-radius: 20px; font-size: 0.8rem;">
+                                    <i class="bi bi-calendar-week"></i> {{ log.status }}
+                                </span>
+                            {% elif 'Leave' in log.status or 'Absent' in log.status %}
+                                <span class="badge bg-danger" style="padding: 4px 12px; border-radius: 20px; font-size: 0.8rem;">
+                                    <i class="bi bi-exclamation-triangle"></i> {{ log.status }}
+                                </span>
+                            {% elif 'Missing' in log.status %}
+                                <span class="badge bg-warning text-dark" style="padding: 4px 12px; border-radius: 20px; font-size: 0.8rem;">
+                                    <i class="bi bi-clock"></i> {{ log.status }}
+                                </span>
+                            {% else %}
+                                <span class="badge bg-success" style="padding: 4px 12px; border-radius: 20px; font-size: 0.8rem;">
+                                    <i class="bi bi-check-circle"></i> {{ log.status }}
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if total_pages > 1 %}
+        <nav class="mt-3">
+            <ul class="pagination pagination-custom justify-content-center">
+                {% if page > 1 %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page-1 }}&date_from={{ date_from }}&date_to={{ date_to }}&floor={{ selected_floor }}&user_id={{ search_user }}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+
+                {% for p in range(1, total_pages + 1) %}
+                    {% if p == page %}
+                        <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+                    {% elif p <= 3 or p > total_pages - 3 or (p >= page - 2 and p <= page + 2) %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ p }}&date_from={{ date_from }}&date_to={{ date_to }}&floor={{ selected_floor }}&user_id={{ search_user }}">{{ p }}</a>
+                        </li>
+                    {% elif p == 4 and page > 5 %}
+                        <li class="page-item disabled"><span class="page-link">…</span></li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page < total_pages %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page+1 }}&date_from={{ date_from }}&date_to={{ date_to }}&floor={{ selected_floor }}&user_id={{ search_user }}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+        <div class="mt-2 text-muted small">
+            Showing {{ logs|length }} records ({{ total_count }} total)
+        </div>
+
+        {% else %}
+        <div class="alert alert-info alert-modern">
+            <i class="bi bi-info-circle"></i> No attendance records found for the selected filters.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+{% block title %}Attendance Records{% endblock %}
+
+{% block content %}
+<div class="card-modern">
+    <div class="card-header-modern">
+        <i class="bi bi-table"></i> Attendance Records
+        <span class="badge bg-secondary float-end">{{ total_count }} records</span>
+    </div>
+    <div class="card-body-modern">
+
+        <!-- Filter + Export in ONE ROW -->
+        <form method="GET" action="/" class="filter-row">
+            <!-- Date From -->
+            <div class="filter-item">
+                <label class="form-label"><i class="bi bi-calendar"></i> From</label>
+                <input type="date" name="date_from" class="form-control form-control-modern" value="{{ date_from }}">
+            </div>
+            <!-- Date To -->
+            <div class="filter-item">
+                <label class="form-label"><i class="bi bi-calendar"></i> To</label>
+                <input type="date" name="date_to" class="form-control form-control-modern" value="{{ date_to }}">
+            </div>
+            <!-- Floor -->
+            <div class="filter-item">
+                <label class="form-label"><i class="bi bi-building"></i> Floor</label>
+                <select name="floor" class="form-select form-select-modern">
+                    <option value="">All</option>
+                    <option value="2nd_floor" {% if selected_floor == '2nd_floor' %}selected{% endif %}>2nd</option>
+                    <option value="3rd_floor" {% if selected_floor == '3rd_floor' %}selected{% endif %}>3rd</option>
+                </select>
+            </div>
+            <!-- User -->
+            <div class="filter-item">
+                <label class="form-label"><i class="bi bi-person"></i> User</label>
+                <input type="text" name="user_id" class="form-control form-control-modern" placeholder="ID or Name" value="{{ search_user }}">
+            </div>
+            <!-- Filter Button -->
+            <div class="filter-item-btn">
+                <button type="submit" class="btn btn-primary-custom">
+                    <i class="bi bi-search"></i> Filter
+                </button>
+            </div>
+            <!-- Export Buttons -->
+            <div class="export-group" style="display: flex; gap: 4px; align-items: flex-end; padding-bottom: 0;">
+                <a href="{{ url_for('export_excel', date_from=date_from, date_to=date_to, floor=selected_floor, user_id=search_user) }}" 
+                   class="btn btn-excel" title="Export to Excel">
+                    <i class="bi bi-file-earmark-excel"></i> Excel
+                </a>
+                <a href="{{ url_for('export_csv', date_from=date_from, date_to=date_to, floor=selected_floor, user_id=search_user) }}" 
+                   class="btn btn-csv" title="Export to CSV">
+                    <i class="bi bi-file-earmark-text"></i> CSV
+                </a>
+                <a href="{{ url_for('export_pdf', date_from=date_from, date_to=date_to, floor=selected_floor, user_id=search_user) }}" 
+                   class="btn btn-pdf" title="Export to PDF">
+                    <i class="bi bi-file-earmark-pdf"></i> PDF
+                </a>
+                <a href="{{ url_for('export_sheets', date_from=date_from, date_to=date_to, floor=selected_floor, user_id=search_user) }}" 
+                   class="btn btn-sheets" title="Export to Sheets">
+                    <i class="bi bi-layers"></i> Sheets
+                </a>
+            </div>
+        </form>
+
+        <!-- Results Table - 10 Columns -->
+        {% if logs %}
+        <div class="table-responsive">
+            <table class="table table-custom">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Floor</th>
+                        <th>Date</th>
+                        <th>Day</th>
+                        <th>Name</th>
+                        <th>Chk In</th>
+                        <th>Remarks In</th>
+                        <th>Chk Out</th>
+                        <th>Remarks Out</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td><strong>{{ log.user_id }}</strong></td>
+                        <td>
+                            {% if log.device_floor == '2nd_floor' %}
+                                <span class="badge-floor-2nd">2nd Floor</span>
+                            {% else %}
+                                <span class="badge-floor-3rd">3rd Floor</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ log.date }}</td>
+                        <td>
+                            {% if log.day == 'Sunday' %}
+                                <span class="badge bg-danger" style="padding: 3px 10px; border-radius: 20px; font-size: 0.7rem;">{{ log.day }}</span>
+                            {% else %}
+                                {{ log.day }}
+                            {% endif %}
+                        </td>
+                        <td>{{ log.user_name }}</td>
+                        
+                        <!-- Sunday Merged Row -->
+                        {% if log.is_sunday %}
+                            <td colspan="4" style="text-align: center; background: #f8f9fa; font-weight: bold; color: #dc3545; font-size: 0.85rem;">
+                                {{ log.chk_in }}
+                            </td>
+                        {% else %}
+                            <td>
+                                {% if log.chk_in != '--' %}
+                                    <span class="badge-in">{{ log.chk_in }}</span>
+                                {% else %}
+                                    <span class="text-muted">--</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if 'Missing' in log.remark_in %}
+                                    <span class="text-danger" style="font-size: 0.8rem;">{{ log.remark_in }}</span>
+                                {% elif log.remark_in %}
+                                    <span class="text-success" style="font-size: 0.8rem;">{{ log.remark_in }}</span>
+                                {% else %}
+                                    <span class="text-muted">--</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if log.chk_out != '--' %}
+                                    <span class="badge-out">{{ log.chk_out }}</span>
+                                {% else %}
+                                    <span class="text-muted">--</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if 'Missing' in log.remark_out %}
+                                    <span class="text-danger" style="font-size: 0.8rem;">{{ log.remark_out }}</span>
+                                {% elif log.remark_out %}
+                                    <span class="text-success" style="font-size: 0.8rem;">{{ log.remark_out }}</span>
+                                {% else %}
+                                    <span class="text-muted">--</span>
+                                {% endif %}
+                            </td>
+                        {% endif %}
+                        
+                        <td>
+                            {% if log.is_sunday %}
+                                <span class="status-badge status-off">
+                                    <i class="bi bi-calendar-week"></i> Weekly Off
+                                </span>
+                            {% elif 'Leave' in log.status or 'Absent' in log.status %}
+                                <span class="status-badge status-danger">
+                                    <i class="bi bi-exclamation-triangle"></i> {{ log.status }}
+                                </span>
+                            {% elif 'Missing' in log.status %}
+                                <span class="status-badge status-warning">
+                                    <i class="bi bi-clock"></i> {{ log.status }}
+                                </span>
+                            {% else %}
+                                <span class="status-badge status-present">
+                                    <i class="bi bi-check-circle"></i> {{ log.status }}
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if total_pages > 1 %}
+        <nav class="mt-3">
+            <ul class="pagination pagination-custom justify-content-center">
+                {% if page > 1 %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page-1 }}&date_from={{ date_from }}&date_to={{ date_to }}&floor={{ selected_floor }}&user_id={{ search_user }}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+
+                {% for p in range(1, total_pages + 1) %}
+                    {% if p == page %}
+                        <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+                    {% elif p <= 3 or p > total_pages - 3 or (p >= page - 2 and p <= page + 2) %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ p }}&date_from={{ date_from }}&date_to={{ date_to }}&floor={{ selected_floor }}&user_id={{ search_user }}">{{ p }}</a>
+                        </li>
+                    {% elif p == 4 and page > 5 %}
+                        <li class="page-item disabled"><span class="page-link">…</span></li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page < total_pages %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page+1 }}&date_from={{ date_from }}&date_to={{ date_to }}&floor={{ selected_floor }}&user_id={{ search_user }}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+        <div class="mt-2 text-muted small">
+            Showing {{ logs|length }} records ({{ total_count }} total)
+        </div>
+
+        {% else %}
+        <div class="alert alert-info alert-modern">
+            <i class="bi bi-info-circle"></i> No attendance records found for the selected filters.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>License Expired</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary: #1a237e;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .expired-container {
+            width: 100%;
+            max-width: 480px;
+        }
+
+        .expired-card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 48px 40px 40px 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .logo-icon {
+            font-size: 4rem;
+            display: block;
+            margin-bottom: 8px;
+            line-height: 1;
+            opacity: 0.5;
+        }
+
+        .company-name {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--primary);
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .expired-icon {
+            font-size: 4rem;
+            color: #dc3545;
+            margin: 16px 0 8px 0;
+            display: block;
+        }
+
+        .expired-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #dc3545;
+            margin-bottom: 8px;
+        }
+
+        .expired-sub {
+            font-size: 1rem;
+            color: #6c757d;
+            margin-bottom: 4px;
+        }
+
+        .expired-message {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .btn-activate {
+            padding: 12px 32px;
+            background: var(--primary);
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-activate:hover {
+            background: #0d1442;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(26, 35, 126, 0.3);
+            color: #ffffff;
+        }
+
+        .btn-activate i {
+            margin-right: 8px;
+        }
+
+        .footer-text {
+            margin-top: 28px;
+            font-size: 0.75rem;
+            color: #9ca3af;
+        }
+
+        .footer-text .footer-logo {
+            font-size: 1rem;
+        }
+
+        .footer-text .footer-company {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .expired-card {
+            animation: fadeInUp 0.6s ease;
+        }
+
+        @media (max-width: 480px) {
+            .expired-card {
+                padding: 32px 20px 28px 20px;
+            }
+            .logo-icon {
+                font-size: 3rem;
+            }
+            .expired-title {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="expired-container">
+        <div class="expired-card">
+            <!-- Logo -->
+            <span class="logo-icon">🅐∞🅐</span>
+            <div class="company-name">USMAN ENTERPRISE</div>
+
+            <!-- Expired Icon -->
+            <span class="expired-icon">
+                <i class="bi bi-exclamation-octagon-fill"></i>
+            </span>
+
+            <!-- Title -->
+            <div class="expired-title">License Expired</div>
+            <div class="expired-sub">Access to this system has been deactivated</div>
+
+            <!-- Message -->
+            <div class="expired-message">
+                Please contact the administrator to renew the license.
+                <br>
+                <small class="text-muted">Reference: USMAN-ENTERPRISE-2026</small>
+            </div>
+
+            <!-- Activation Button -->
+            <a href="{{ url_for('activate') }}" class="btn-activate">
+                <i class="bi bi-key-fill"></i> Activate License
+            </a>
+
+            <!-- Footer -->
+            <div class="footer-text">
+                <span class="footer-logo">🅐∞🅐</span>
+                <span class="footer-company">USMAN ENTERPRISE</span>
+                &nbsp;|&nbsp; All Rights Reserved ® 2026
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>USMAN ENTERPRISE - Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary: #1a237e;
+            --primary-light: #283593;
+            --secondary: #00897b;
+            --bg-light: #f5f7fa;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #e8eaf6 0%, #f5f7fa 100%);
+            padding: 20px;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .login-card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 48px 40px 40px 40px;
+            box-shadow: 0 20px 60px rgba(26, 35, 126, 0.15);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .login-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .logo-icon {
+            font-size: 4rem;
+            display: block;
+            margin-bottom: 8px;
+            line-height: 1;
+        }
+
+        .company-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .company-sub {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-bottom: 28px;
+        }
+
+        .login-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #263238;
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-group label {
+            font-weight: 500;
+            font-size: 0.9rem;
+            color: #37474f;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .form-group .input-group {
+            border-radius: 10px;
+            overflow: hidden;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+            background: #fafafa;
+        }
+
+        .form-group .input-group:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(26, 35, 126, 0.1);
+        }
+
+        .form-group .input-group-text {
+            background: transparent;
+            border: none;
+            color: #6c757d;
+            padding: 0 0 0 16px;
+            font-size: 1.1rem;
+        }
+
+        .form-group .form-control {
+            border: none;
+            padding: 12px 16px 12px 8px;
+            font-size: 1rem;
+            background: transparent;
+            outline: none;
+            box-shadow: none;
+        }
+
+        .form-group .form-control:focus {
+            box-shadow: none;
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(26, 35, 126, 0.3);
+        }
+
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        .btn-login i {
+            margin-right: 8px;
+        }
+
+        .alert-error {
+            background: #fef3f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .alert-error i {
+            font-size: 1.1rem;
+        }
+
+        .footer-text {
+            margin-top: 24px;
+            font-size: 0.75rem;
+            color: #9ca3af;
+        }
+
+        .footer-text .footer-logo {
+            font-size: 1rem;
+        }
+
+        .footer-text .footer-company {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        /* Animation */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-card {
+            animation: fadeInUp 0.6s ease;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .login-card {
+                padding: 32px 20px 28px 20px;
+            }
+            .logo-icon {
+                font-size: 3rem;
+            }
+            .company-name {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <!-- Logo -->
+            <span class="logo-icon">🅐∞🅐</span>
+            <div class="company-name">USMAN ENTERPRISE</div>
+            <div class="company-sub">Attendance Management System</div>
+
+            <!-- Title -->
+            <div class="login-title">
+                <i class="bi bi-lock-fill" style="color: var(--primary);"></i> Access Required
+            </div>
+
+            <!-- Error Message -->
+            {% if error %}
+            <div class="alert-error">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <!-- Login Form -->
+            <form method="POST" action="{{ url_for('login') }}">
+                <div class="form-group">
+                    <label for="access_code">
+                        <i class="bi bi-key-fill" style="color: var(--primary);"></i> Access Code
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="bi bi-shield-lock"></i>
+                        </span>
+                        <input type="password" 
+                               class="form-control" 
+                               id="access_code" 
+                               name="access_code" 
+                               placeholder="Enter access code"
+                               required
+                               autofocus>
+                    </div>
+                    <small class="text-muted" style="font-size: 0.75rem; margin-top: 4px; display: block;">
+                        <i class="bi bi-info-circle"></i> Contact administrator for access
+                    </small>
+                </div>
+
+                <button type="submit" class="btn-login">
+                    <i class="bi bi-box-arrow-in-right"></i> Login
+                </button>
+            </form>
+
+            <!-- Footer -->
+            <div class="footer-text">
+                <span class="footer-logo">🅐∞🅐</span>
+                <span class="footer-company">USMAN ENTERPRISE</span>
+                &nbsp;|&nbsp; All Rights Reserved ® 2026
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+{% extends "layout.html" %}
+
+{% block title %}Reports & Statistics{% endblock %}
+
+{% block content %}
+<div class="card-modern">
+    <div class="card-header-modern">
+        <i class="bi bi-bar-chart"></i> Reports & Statistics
+    </div>
+    <div class="card-body-modern">
+
+        <!-- Tabs Navigation -->
+        <ul class="nav nav-tabs nav-tabs-custom mb-4" style="border-bottom: 2px solid #e9ecef;">
+            <li class="nav-item">
+                <a class="nav-link {% if active_tab == 'summary' %}active{% endif %}" 
+                   style="{% if active_tab == 'summary' %}background: #1a237e; color: #ffffff; border-radius: 8px 8px 0 0;{% else %}color: #6c757d;{% endif %} font-weight: 600; padding: 10px 24px; border: none;"
+                   href="#summary-tab" data-bs-toggle="tab">
+                    <i class="bi bi-clipboard-data"></i> Summary
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('activity') }}" style="color: #6c757d; font-weight: 600; padding: 10px 24px; border: none;"><i class="bi bi-clock-history"></i> Employee Activity</a>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+
+            <!-- ==================== SUMMARY TAB ==================== -->
+            <div class="tab-pane fade {% if active_tab == 'summary' %}show active{% endif %}" id="summary-tab">
+
+                <!-- Summary Cards -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <div class="card bg-primary text-white border-0 shadow-sm">
+                            <div class="card-body text-center">
+                                <h6 class="card-title text-white-50">Total Users</h6>
+                                <h2 class="mb-0">{{ total_users }}</h2>
+                                <small>{{ active_users }} active, {{ inactive_users }} inactive</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white border-0 shadow-sm">
+                            <div class="card-body text-center">
+                                <h6 class="card-title text-white-50">Total Logs</h6>
+                                <h2 class="mb-0">{{ total_logs }}</h2>
+                                <small>All time records</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-info text-white border-0 shadow-sm">
+                            <div class="card-body text-center">
+                                <h6 class="card-title text-white-50">Days Covered</h6>
+                                <h2 class="mb-0">{{ days_covered }}</h2>
+                                <small>{{ date_from }} to {{ date_to }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-secondary text-white border-0 shadow-sm">
+                            <div class="card-body text-center">
+                                <h6 class="card-title text-white-50">Floors</h6>
+                                <h2 class="mb-0">{{ floor_users|length }}</h2>
+                                <small>Active floors</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Floor Distribution -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-light fw-semibold">
+                                <i class="bi bi-building"></i> Users by Floor
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Floor</th>
+                                            <th>Users</th>
+                                            <th>Percentage</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for floor, count in floor_users.items() %}
+                                        <tr>
+                                            <td>
+                                                {% if floor == '2nd_floor' %}
+                                                    <span class="badge-floor-2nd">2nd Floor</span>
+                                                {% else %}
+                                                    <span class="badge-floor-3rd">3rd Floor</span>
+                                                {% endif %}
+                                            </td>
+                                            <td><strong>{{ count }}</strong></td>
+                                            <td>
+                                                <div class="progress" style="height: 8px; border-radius: 10px;">
+                                                    <div class="progress-bar bg-primary" style="width: {{ (count / total_users * 100) if total_users > 0 else 0 }}%; border-radius: 10px;"></div>
+                                                </div>
+                                                <small class="text-muted">{{ "%.1f"|format((count / total_users * 100) if total_users > 0 else 0) }}%</small>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-light fw-semibold">
+                                <i class="bi bi-clipboard-data"></i> Logs by Floor
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Floor</th>
+                                            <th>Logs</th>
+                                            <th>Percentage</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for floor, count in floor_logs.items() %}
+                                        <tr>
+                                            <td>
+                                                {% if floor == '2nd_floor' %}
+                                                    <span class="badge-floor-2nd">2nd Floor</span>
+                                                {% else %}
+                                                    <span class="badge-floor-3rd">3rd Floor</span>
+                                                {% endif %}
+                                            </td>
+                                            <td><strong>{{ count }}</strong></td>
+                                            <td>
+                                                <div class="progress" style="height: 8px; border-radius: 10px;">
+                                                    <div class="progress-bar bg-success" style="width: {{ (count / total_logs * 100) if total_logs > 0 else 0 }}%; border-radius: 10px;"></div>
+                                                </div>
+                                                <small class="text-muted">{{ "%.1f"|format((count / total_logs * 100) if total_logs > 0 else 0) }}%</small>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Daily Logs (Last 7 Days) -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-light fw-semibold">
+                        <i class="bi bi-calendar"></i> Daily Logs (Last 7 Days)
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Total Logs</th>
+                                        <th>IN</th>
+                                        <th>OUT</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for day in daily_stats %}
+                                    <tr>
+                                        <td>{{ day.date }}</td>
+                                        <td><span class="badge bg-secondary">{{ day.total }}</span></td>
+                                        <td><span class="badge bg-success">{{ day.in_count }}</span></td>
+                                        <td><span class="badge bg-danger">{{ day.out_count }}</span></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <!-- ==================== END SUMMARY TAB ==================== -->
+
             
-            profile_xml = f'''<?xml version="1.0"?>
-<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
-    <name>{ssid}</name>
-    <SSIDConfig>
-        <SSID>
-            <name>{ssid}</name>
-        </SSID>
-    </SSIDConfig>
-    <connectionType>ESS</connectionType>
-    <connectionMode>auto</connectionMode>
-    <MSM>
-        <security>
-            <authEncryption>
-                <authentication>WPA2PSK</authentication>
-                <encryption>AES</encryption>
-                <useOneX>false</useOneX>
-            </authEncryption>
-            <sharedKey>
-                <keyType>passPhrase</keyType>
-                <protected>false</protected>
-                <keyMaterial>{password}</keyMaterial>
-            </sharedKey>
-        </security>
-    </MSM>
-</WLANProfile>'''
-            
-            profile_path = f"C:\\temp\\{ssid}.xml"
-            with open(profile_path, 'w') as f:
-                f.write(profile_xml)
-            
-            subprocess.run(f'netsh wlan add profile filename="{profile_path}"', 
-                          shell=True, capture_output=True, text=True)
-            time.sleep(2)
-            subprocess.run(f'netsh wlan connect name="{ssid}"', 
-                          shell=True, capture_output=True, text=True)
-            time.sleep(5)
-        else:
-            cmd = f'netsh wlan connect name="{ssid}" ssid="{ssid}" interface="Wi-Fi"'
-            subprocess.run(cmd, shell=True, capture_output=True, text=True)
-            time.sleep(5)
 
-        new_current = get_current_wifi()
-        if new_current == ssid:
-            print_status(f"Successfully connected to {ssid}", "success")
-            return True
-        else:
-            print_status(f"Failed to connect to {ssid}", "error")
-            return False
-    except Exception as e:
-        print_status(f"WiFi switch error: {e}", "error")
-        return False
+        </div>
+    </div>
+</div>
 
-def init_database():
-    conn = sqlite3.connect('attendance.db', timeout=20)
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL,
-            name TEXT NOT NULL,
-            device_floor TEXT NOT NULL,
-            last_sync TIMESTAMP,
-            is_active INTEGER DEFAULT 1,
-            UNIQUE(user_id, device_floor)
-        )
-    ''')
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS attendance_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL,
-            timestamp TIMESTAMP NOT NULL,
-            device_floor TEXT NOT NULL,
-            punch_type INTEGER,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            is_manually_edited INTEGER DEFAULT 0,
-            last_edited_at TIMESTAMP,
-            remark_in TEXT,
-            remark_out TEXT,
-            status_override TEXT,
-            UNIQUE(user_id, timestamp, device_floor)
-        )
-    ''')
-    conn.commit()
-    conn.close()
-    print_status("Database ready", "success")
+<style>
+    .nav-tabs-custom .nav-link {
+        border: none;
+        margin-right: 4px;
+        transition: all 0.3s ease;
+    }
+    .nav-tabs-custom .nav-link:hover {
+        background: #e8eaf6;
+        border-radius: 8px 8px 0 0;
+        color: #1a237e;
+    }
+    .nav-tabs-custom .nav-link.active {
+        background: #1a237e !important;
+        color: #ffffff !important;
+        border-radius: 8px 8px 0 0;
+    }
+</style>
 
-def get_fetch_start_time():
-    """Return datetime to fetch records from (June 1, 2026)"""
-    print_status(f"Fetching records from: {FETCH_START_DATE}", "info")
-    return FETCH_START_DATE
+<!-- Set active tab based on URL parameter -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const tab = urlParams.get('tab');
+        if (tab === 'activity') {
+            document.querySelector('#activity-tab').classList.add('show', 'active');
+            document.querySelector('#summary-tab').classList.remove('show', 'active');
+            document.querySelector('[href="#activity-tab"]').classList.add('active');
+            document.querySelector('[href="#summary-tab"]').classList.remove('active');
+        }
+    });
+</script>
 
-def save_user_to_db(user_id, name, floor):
-    conn = sqlite3.connect('attendance.db', timeout=20)
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        SELECT is_active FROM users 
-        WHERE user_id = ? AND device_floor = ?
-    ''', (user_id, floor))
-    existing = cursor.fetchone()
-    
-    if existing:
-        cursor.execute('''
-            UPDATE users 
-            SET name = ?, last_sync = ?
-            WHERE user_id = ? AND device_floor = ?
-        ''', (name, datetime.now(), user_id, floor))
-        print_status(f"Updated user: {name} (ID:{user_id}, Floor:{floor}) - is_active preserved", "info")
-    else:
-        cursor.execute('''
-            INSERT INTO users (user_id, name, device_floor, last_sync, is_active)
-            VALUES (?, ?, ?, ?, 1)
-        ''', (user_id, name, floor, datetime.now()))
-        print_status(f"Added new user: {name} (ID:{user_id}, Floor:{floor})", "success")
-    
-    conn.commit()
-    conn.close()
+{% endblock %}
+{% extends "layout.html" %}
 
-def auto_calculate_remark_in(time_str, day_name):
-    if not time_str or time_str == '--':
-        return 'MISSING IN'
-    try:
-        if ':' in str(time_str):
-            parts = str(time_str).split(':')
-            hour = int(parts[0]) if parts[0].isdigit() else 0
-            minute = int(parts[1][:2]) if parts[1][:2].isdigit() else 0
-        else:
-            return 'ON TIME'
-        check_in = datetime.strptime(f"{hour:02d}:{minute:02d}", '%H:%M').time()
-        if day_name == 'Saturday':
-            start = datetime.strptime('10:00', '%H:%M').time()
-            grace_end = datetime.strptime('10:30', '%H:%M').time()
-        else:
-            start = datetime.strptime('09:15', '%H:%M').time()
-            grace_end = datetime.strptime('09:30', '%H:%M').time()
-        if check_in <= start:
-            return 'ON TIME'
-        elif check_in <= grace_end:
-            return 'GRACE'
-        else:
-            return 'LATE'
-    except:
-        return 'ON TIME'
+{% block title %}Users List{% endblock %}
 
-def auto_calculate_remark_out(time_str, day_name):
-    if not time_str or time_str == '--':
-        return 'MISSING OUT'
-    try:
-        if ':' in str(time_str):
-            parts = str(time_str).split(':')
-            hour = int(parts[0]) if parts[0].isdigit() else 0
-            minute = int(parts[1][:2]) if parts[1][:2].isdigit() else 0
-        else:
-            return 'ON TIME'
-        check_out = datetime.strptime(f"{hour:02d}:{minute:02d}", '%H:%M').time()
-        if day_name == 'Saturday':
-            early = datetime.strptime('14:00', '%H:%M').time()
-            overtime = datetime.strptime('16:00', '%H:%M').time()
-        else:
-            early = datetime.strptime('17:00', '%H:%M').time()
-            overtime = datetime.strptime('18:00', '%H:%M').time()
-        if check_out > overtime:
-            return 'OVERTIME'
-        elif check_out < early:
-            return 'EARLY DEPT'
-        else:
-            return 'ON TIME'
-    except:
-        return 'ON TIME'
+{% block content %}
+<div class="card-modern">
+    <div class="card-header-modern">
+        <i class="bi bi-people"></i> Users List
+        <span class="badge bg-secondary float-end">{{ users|length }} users</span>
+    </div>
+    <div class="card-body-modern">
 
-def clean_and_save_attendance(records_by_day, floor):
-    conn = sqlite3.connect('attendance.db', timeout=20)
-    cursor = conn.cursor()
-    
-    total_kept = 0
-    total_skipped_edited = 0
-    total_skipped_existing = 0
-    
-    for key, record_data in records_by_day.items():
-        user_id = record_data['user_id']
-        date_str = record_data['date']
-        
-        # Check if ANY manually edited record exists for this user/date/floor
-        cursor.execute('''
-            SELECT COUNT(*) FROM attendance_logs 
-            WHERE user_id = ? AND device_floor = ? AND DATE(timestamp) = ? AND is_manually_edited = 1
-        ''', (user_id, floor, date_str))
-        edited_count = cursor.fetchone()[0]
-        
-        if edited_count > 0:
-            print_status(f"Skipping {user_id} on {date_str} - has manually edited records", "warning")
-            total_skipped_edited += 1
-            continue
-        
-        # Check if records already exist for this day (non-edited)
-        cursor.execute('''
-            SELECT COUNT(*) FROM attendance_logs 
-            WHERE user_id = ? AND device_floor = ? AND DATE(timestamp) = ?
-        ''', (user_id, floor, date_str))
-        existing_count = cursor.fetchone()[0]
-        
-        if existing_count > 0:
-            print_status(f"Skipping {user_id} on {date_str} - records already exist", "info")
-            total_skipped_existing += 1
-            continue
-        
-        # No existing records, no manual edits – safe to insert
-        punches = record_data.get('punches', [])
-        
-        # Find earliest IN and latest OUT
-        check_in_time = None
-        check_out_time = None
-        check_in_raw = None
-        check_out_raw = None
-        
-        for punch in punches:
-            if punch['punch_type'] == 0:  # IN
-                if check_in_time is None or punch['timestamp'] < check_in_time:
-                    check_in_time = punch['timestamp']
-                    check_in_raw = punch['raw_time']
-            else:  # OUT
-                if check_out_time is None or punch['timestamp'] > check_out_time:
-                    check_out_time = punch['timestamp']
-                    check_out_raw = punch['raw_time']
-        
-        day_name = datetime.strptime(date_str, '%Y-%m-%d').strftime('%A')
-        
-        inserted = 0
-        
-        # Insert check-in
-        if check_in_time:
-            remark_in = auto_calculate_remark_in(check_in_raw, day_name)
-            cursor.execute('''
-                INSERT INTO attendance_logs (user_id, timestamp, device_floor, punch_type, is_manually_edited, remark_in)
-                VALUES (?, ?, ?, 0, 0, ?)
-            ''', (user_id, check_in_time, floor, remark_in))
-            inserted += 1
-            print_status(f"  Added IN: {check_in_time} ({remark_in}) for {user_id}", "info")
-        
-        # Insert check-out
-        if check_out_time:
-            remark_out = auto_calculate_remark_out(check_out_raw, day_name)
-            cursor.execute('''
-                INSERT INTO attendance_logs (user_id, timestamp, device_floor, punch_type, is_manually_edited, remark_out)
-                VALUES (?, ?, ?, 1, 0, ?)
-            ''', (user_id, check_out_time, floor, remark_out))
-            inserted += 1
-            print_status(f"  Added OUT: {check_out_time} ({remark_out}) for {user_id}", "info")
-        
-        if inserted > 0:
-            total_kept += 1
-    
-    conn.commit()
-    conn.close()
-    return total_kept, total_skipped_edited, total_skipped_existing
+        <!-- Filters -->
+        <form method="GET" action="/users" class="row g-3 mb-4">
+            <div class="col-md-4">
+                <label class="form-label fw-semibold"><i class="bi bi-search"></i> Search</label>
+                <input type="text" name="search" class="form-control form-control-modern" placeholder="Name or ID..." value="{{ search_query }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold"><i class="bi bi-building"></i> Floor</label>
+                <select name="floor" class="form-select form-select-modern">
+                    <option value="">All Floors</option>
+                    <option value="2nd_floor" {% if selected_floor == '2nd_floor' %}selected{% endif %}>2nd Floor</option>
+                    <option value="3rd_floor" {% if selected_floor == '3rd_floor' %}selected{% endif %}>3rd Floor</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold"><i class="bi bi-toggle-on"></i> Status</label>
+                <select name="status" class="form-select form-select-modern">
+                    <option value="">All Users</option>
+                    <option value="1" {% if selected_status == '1' %}selected{% endif %}>Active</option>
+                    <option value="0" {% if selected_status == '0' %}selected{% endif %}>Inactive</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary-custom w-100">
+                    <i class="bi bi-search"></i> Filter
+                </button>
+            </div>
+        </form>
 
-def fetch_device_data(floor):
-    config = WIFI_CONFIG[floor]
-    print(f"\n{'='*60}")
-    print(f"[FETCHING] {floor.upper()}")
-    print(f"   WiFi: {config['ssid']}")
-    print(f"   Device IP: {config['device_ip']}")
-    print(f"   Fetching records from {FETCH_START_DATE.date()} onward")
-    print(f"{'='*60}")
+        <!-- Summary Stats -->
+        <div class="row g-2 mb-4">
+            <div class="col-md-4">
+                <div class="bg-light p-2 rounded-3 text-center">
+                    <span class="text-muted small">Total Users</span>
+                    <h5 class="mb-0 text-primary">{{ users|length }}</h5>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="bg-light p-2 rounded-3 text-center">
+                    <span class="text-muted small">Active</span>
+                    <h5 class="mb-0 text-success">{{ active_count }}</h5>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="bg-light p-2 rounded-3 text-center">
+                    <span class="text-muted small">Inactive</span>
+                    <h5 class="mb-0 text-danger">{{ inactive_count }}</h5>
+                </div>
+            </div>
+        </div>
 
-    if not switch_wifi(config['ssid'], config['password']):
-        raise Exception(f"Cannot connect to WiFi '{config['ssid']}' for {floor}")
+        <!-- Users Table -->
+        {% if users %}
+        <div class="table-responsive">
+            <table class="table table-custom">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Floor</th>
+                        <th>Status</th>
+                        <th>Last Sync</th>
+                        <th>Total Logs</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td><strong>{{ user.user_id }}</strong></td>
+                        <td>{{ user.name }}</td>
+                        <td>
+                            {% if user.device_floor == '2nd_floor' %}
+                                <span class="badge-floor-2nd">2nd Floor</span>
+                            {% else %}
+                                <span class="badge-floor-3rd">3rd Floor</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.is_active == 1 %}
+                                <span class="badge bg-success" style="padding: 5px 14px; border-radius: 20px;">Active</span>
+                            {% else %}
+                                <span class="badge bg-secondary" style="padding: 5px 14px; border-radius: 20px;">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ user.last_sync or '-' }}</td>
+                        <td>
+                            <span class="badge bg-primary" style="padding: 5px 12px; border-radius: 20px;">{{ user.log_count or 0 }}</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
-    print_status(f"Connecting to device at {config['device_ip']}...", "info")
-    zk = ZK(config['device_ip'], port=config['device_port'], timeout=5, 
-             password=config['device_password'], force_udp=False, ommit_ping=True)
-    device_conn = zk.connect()
+        <div class="mt-2 text-muted small">
+            Showing {{ users|length }} users
+        </div>
 
-    if not device_conn:
-        raise Exception(f"Cannot connect to device at {config['device_ip']} for {floor}")
-
-    print_status("Connected to device successfully!", "success")
-
-    try:
-        device_conn.disable_device()
-    except:
-        pass
-
-    print_status("Fetching users...", "info")
-    users = device_conn.get_users()
-    user_count = 0
-    for user in users:
-        if user.name:
-            save_user_to_db(str(user.user_id), user.name, floor)
-            user_count += 1
-    print_status(f"Saved/Updated {user_count} users", "success")
-
-    # Get start time (June 1, 2026)
-    start_time = get_fetch_start_time()
-    
-    print_status(f"Fetching ALL logs from device...", "info")
-    all_logs = device_conn.get_attendance()
-
-    # Group logs by user_id and date (only for records >= June 1, 2026)
-    records_to_add = {}
-    
-    for log in all_logs:
-        if log.timestamp >= start_time:
-            user_id = str(log.user_id)
-            date_str = log.timestamp.strftime('%Y-%m-%d')
-            key = f"{user_id}_{date_str}"
-            
-            if key not in records_to_add:
-                records_to_add[key] = {
-                    'user_id': user_id,
-                    'date': date_str,
-                    'punches': []
-                }
-            
-            raw_time = log.timestamp.strftime('%H:%M')
-            
-            records_to_add[key]['punches'].append({
-                'timestamp': log.timestamp,
-                'punch_type': log.punch,
-                'raw_time': raw_time
-            })
-
-    # Process with deduplication and skip existing/edited
-    added_count, skipped_edited, skipped_existing = clean_and_save_attendance(records_to_add, floor)
-
-    try:
-        device_conn.enable_device()
-    except:
-        pass
-
-    device_conn.disconnect()
-
-    print(f"\n[RESULTS] for {floor}:")
-    print_status(f"New records added: {added_count}", "success")
-    if skipped_edited > 0:
-        print_status(f"Skipped (manually edited): {skipped_edited} users/days", "warning")
-    if skipped_existing > 0:
-        print_status(f"Skipped (already exist): {skipped_existing} users/days", "info")
-    
-    return added_count, user_count
-
-def main():
-    print("\n" + "="*60)
-    print("ATTENDANCE FETCHER - FULL HISTORICAL SYNC")
-    print(f"Fetching records from {FETCH_START_DATE.date()} onward")
-    print("Rule: Keep earliest IN, latest OUT per day")
-    print("Manually edited records will NOT be touched")
-    print("Already existing records will be skipped")
-    print("="*60)
-
-    original_wifi = get_current_wifi()
-    if original_wifi:
-        print_status(f"Original WiFi saved: {original_wifi}", "info")
-    else:
-        print_status("No original WiFi detected", "warning")
-
-    init_database()
-
-    try:
-        print("\n" + "-" * 30)
-        print_status("STEP 1: Fetching 2nd Floor Data", "info")
-        floor2_total, floor2_users = fetch_device_data('2nd_floor')
-        
-        print("\n" + "-" * 30)
-        print_status("STEP 2: Fetching 3rd Floor Data", "info")
-        floor3_total, floor3_users = fetch_device_data('3rd_floor')
-        
-    except Exception as e:
-        print(f"\n{'='*60}")
-        print_status(f"FETCH STOPPED: {e}", "error")
-        print(f"{'='*60}")
-        
-        if original_wifi:
-            print_status(f"Attempting to restore original WiFi: {original_wifi}", "info")
-            switch_wifi(original_wifi)
-        
-        sys.exit(1)
-
-    if original_wifi:
-        print_status(f"Restoring original WiFi: {original_wifi}", "info")
-        switch_wifi(original_wifi)
-    else:
-        print_status("No original WiFi to restore", "warning")
-
-    conn = sqlite3.connect('attendance.db', timeout=20)
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM users")
-    total_users = cursor.fetchone()[0]
-    cursor.execute("SELECT COUNT(*) FROM attendance_logs")
-    total_logs = cursor.fetchone()[0]
-    cursor.execute("SELECT COUNT(*) FROM attendance_logs WHERE is_manually_edited = 1")
-    edited_count = cursor.fetchone()[0]
-    cursor.execute("SELECT COUNT(*) FROM users WHERE is_active = 0")
-    inactive_count = cursor.fetchone()[0]
-    
-    # Count records from June 1 onward
-    cursor.execute("SELECT COUNT(*) FROM attendance_logs WHERE timestamp >= ?", (FETCH_START_DATE,))
-    records_since_june = cursor.fetchone()[0]
-    conn.close()
-
-    print("\n" + "="*60)
-    print_status("FETCH COMPLETE!", "success")
-    print("="*60)
-    print(f"2nd Floor: {floor2_total} new records added, {floor2_users} users")
-    print(f"3rd Floor: {floor3_total} new records added, {floor3_users} users")
-    print(f"Total NEW records added: {floor2_total + floor3_total}")
-    print(f"Total Users in DB: {total_users}")
-    print(f"  - Active users: {total_users - inactive_count}")
-    print(f"  - Inactive users: {inactive_count}")
-    print(f"Total Attendance Logs in DB: {total_logs}")
-    print(f"Records from {FETCH_START_DATE.date()} onward: {records_since_june}")
-    print(f"Manually Edited Records (protected): {edited_count}")
-    print(f"Original WiFi restored: {original_wifi}")
-    print(f"Fetching from: {FETCH_START_DATE.date()}")
-    print("="*60)
-    
-    sys.exit(0)
-
-if __name__ == '__main__':
-    os.makedirs("C:\\temp", exist_ok=True)
-    main()
+        {% else %}
+        <div class="alert alert-info alert-modern">
+            <i class="bi bi-info-circle"></i> No users found matching your filters.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
